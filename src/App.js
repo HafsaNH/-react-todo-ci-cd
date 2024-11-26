@@ -3,49 +3,70 @@ import React, { useState, useEffect } from 'react';
 const App = () => {
   const [tasks, setTasks] = useState([]);
   const [task, setTask] = useState('');
+  const API_URL = 'https://jsonplaceholder.typicode.com/todos';
 
-  // Load tasks from localStorage on initial render
+  // Charger les tâches depuis l'API
   useEffect(() => {
-    const savedTasks = JSON.parse(localStorage.getItem('tasks')) || [];
-    setTasks(savedTasks);
+    const fetchTasks = async () => {
+      try {
+        const response = await fetch(API_URL);
+        const data = await response.json();
+        // Limiter les tâches pour la démonstration
+        setTasks(data.slice(0, 10)); // Charger seulement 10 tâches
+      } catch (error) {
+        console.error('Erreur lors du chargement des tâches:', error);
+      }
+    };
+
+    fetchTasks();
   }, []);
 
-  // Save tasks to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('tasks', JSON.stringify(tasks));
-  }, [tasks]);
-
-  // Add a new task
-  const addTask = () => {
+  // Ajouter une nouvelle tâche via l'API
+  const addTask = async () => {
     if (task.trim()) {
-      setTasks([...tasks, { text: task, completed: false }]);
-      setTask('');
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: task,
+            completed: false,
+            userId: 1, // Champs nécessaires pour l'API JSONPlaceholder
+          }),
+        });
+
+        const newTask = await response.json();
+        setTasks([...tasks, newTask]);
+        setTask('');
+      } catch (error) {
+        console.error('Erreur lors de l\'ajout de la tâche:', error);
+      }
     } else {
       alert('La tâche ne peut pas être vide !');
     }
   };
 
-  // Delete a task by index
-  const deleteTask = (index) => {
-    setTasks(tasks.filter((_, i) => i !== index));
+  // Supprimer une tâche via l'API
+  const deleteTask = async (id) => {
+    try {
+      await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+      setTasks(tasks.filter((t) => t.id !== id));
+    } catch (error) {
+      console.error('Erreur lors de la suppression de la tâche:', error);
+    }
   };
 
-  // Clear all tasks
-  const clearAllTasks = () => {
-    setTasks([]);
-  };
-
-  // Toggle task completion
-  const toggleCompletion = (index) => {
-    const updatedTasks = tasks.map((t, i) =>
-      i === index ? { ...t, completed: !t.completed } : t
+  // Basculer l'état d'une tâche (localement pour simplifier)
+  const toggleCompletion = (id) => {
+    const updatedTasks = tasks.map((t) =>
+      t.id === id ? { ...t, completed: !t.completed } : t
     );
     setTasks(updatedTasks);
   };
 
   return (
     <div style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'Arial, sans-serif' }}>
-      <h1>Ma Liste de Tâches</h1>
+      <h1>Ma Liste de Tâches (API)</h1>
       <div style={{ marginBottom: '20px' }}>
         <input
           type="text"
@@ -61,12 +82,13 @@ const App = () => {
         />
         <button
           onClick={addTask}
+          disabled={!task.trim()}
           style={{
             padding: '5px 10px',
             border: 'none',
-            backgroundColor: '#4caf50',
+            backgroundColor: task.trim() ? '#4caf50' : '#ccc',
             color: 'white',
-            cursor: 'pointer',
+            cursor: task.trim() ? 'pointer' : 'not-allowed',
             borderRadius: '5px',
           }}
         >
@@ -74,9 +96,9 @@ const App = () => {
         </button>
       </div>
       <ul style={{ listStyle: 'none', padding: 0 }}>
-        {tasks.map((t, index) => (
+        {tasks.map((t) => (
           <li
-            key={index}
+            key={t.id}
             style={{
               textAlign: 'left',
               margin: '10px auto',
@@ -91,17 +113,17 @@ const App = () => {
             }}
           >
             <span
-              onClick={() => toggleCompletion(index)}
+              onClick={() => toggleCompletion(t.id)}
               style={{
                 textDecoration: t.completed ? 'line-through' : 'none',
                 cursor: 'pointer',
                 flexGrow: 1,
               }}
             >
-              {t.text}
+              {t.title}
             </span>
             <button
-              onClick={() => deleteTask(index)}
+              onClick={() => deleteTask(t.id)}
               style={{
                 padding: '5px 10px',
                 border: 'none',
@@ -117,22 +139,6 @@ const App = () => {
           </li>
         ))}
       </ul>
-      {tasks.length > 0 && (
-        <button
-          onClick={clearAllTasks}
-          style={{
-            marginTop: '20px',
-            padding: '10px 20px',
-            border: 'none',
-            backgroundColor: '#007bff',
-            color: 'white',
-            cursor: 'pointer',
-            borderRadius: '5px',
-          }}
-        >
-          Effacer Tout
-        </button>
-      )}
     </div>
   );
 };
